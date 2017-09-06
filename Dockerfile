@@ -32,13 +32,14 @@ RUN wget -O tomcat.tar.gz "$TOMCAT_TGZ_URL"  && \
  rm tomcat*.tar.gz && \
  mv apache-tomcat* ${CATALINA_HOME}
 
-RUN chmod +x ${CATALINA_HOME}/bin/*sh
 
 
 # Create tomcat user
 #RUN groupadd -r tomcat && \
 #useradd -g tomcat -d ${CATALINA_HOME} -s /sbin/nologin  -c "Tomcat user" tomcat && \
-RUN chown -R 1001:0 ${CATALINA_HOME}
+RUN chown -R 1001:0 ${CATALINA_HOME} && \
+    chmod -R ug+rw ${CATALINA_HOME} && \
+    chmod +x ${CATALINA_HOME}/bin/*sh 
 
 WORKDIR /opt/tomcat
 
