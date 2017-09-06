@@ -1,27 +1,49 @@
-FROM centos:7
+FROM centos:centos7
 MAINTAINER keudy@vizuri.com
 
-#
-# Docker base image for FHIR OpenShift Deployment
-#
+# Install prepare infrastructure
+RUN yum -y update && \
+ yum -y install wget && \
+ yum -y install java-1.8.0-openjdk-devel && \
+ yum -y install tar
+
+# Prepare environment 
+#ENV JAVA_HOME /opt/java
+ENV CATALINA_HOME /opt/tomcat 
+#ENV PATH $PATH:$JAVA_HOME/bin:$CATALINA_HOME/bin:$CATALINA_HOME/scripts
+ENV PATH $PATH:$CATALINA_HOME/bin:$CATALINA_HOME/scripts
+
+# Install Oracle Java8
+ENV JAVA_VERSION 8u131
+ENV JAVA_BUILD 8u121-b11
+ENV JAVA_DL_HASH d54c1d3a095b4ff2b6607d096fa80163
+
+ENV TOMCAT_MAJOR 8
+ENV TOMCAT_VERSION 8.5.20
+
+# https://issues.apache.org/jira/browse/INFRA-8753?focusedCommentId=14735394#comment-14735394
+ENV TOMCAT_TGZ_URL https://www.apache.org/dyn/closer.cgi?action=download&filename=tomcat/tomcat-$TOMCAT_MAJOR/v$TOMCAT_VERSION/bin/apache-tomcat-$TOMCAT_VERSION.tar.gz
 
 
-ENV APP_ROOT=/opt/app-root
 
-COPY jolokia.jar ${APP_ROOT}/jolokia.jar
-COPY run.sh ${APP_ROOT}/run.sh
 
-RUN  INSTALL_PKGS="java-1.8.0-openjdk-devel"  \
-     && yum install -y --enablerepo=centosplus $INSTALL_PKGS \
-     && rpm -V $INSTALL_PKGS \
-     && yum clean all -y \
-     && chown -R 1001:0 ${APP_ROOT}
+RUN wget -O tomcat.tar.gz "$TOMCAT_TGZ_URL"  && \
+ tar -xvf tomcat.tar.gz && \
+ rm tomcat*.tar.gz && \
+ mv apache-tomcat* ${CATALINA_HOME}
+
+RUN chmod +x ${CATALINA_HOME}/bin/*sh
+
+
+# Create tomcat user
+#RUN groupadd -r tomcat && \
+#useradd -g tomcat -d ${CATALINA_HOME} -s /sbin/nologin  -c "Tomcat user" tomcat && \
+RUN chown -R 1001:0 ${CATALINA_HOME}
+
+WORKDIR /opt/tomcat
+
+EXPOSE 8080
+EXPOSE 8009
 
 USER 1001
-WORKDIR ${APP_ROOT}
-
-ENV JAVA_OPTS=""
-ENV APP_JAR="app.jar"
-ENV SPRING_PROFILES_ACTIVE=openshift
-
-CMD ${APP_ROOT}/run.sh ${APP_ROOT}/$APP_JAR
+CMD ["catalina.sh", "run"]
